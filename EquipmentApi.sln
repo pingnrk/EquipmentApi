@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36717.8 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EquipmentApi", "EquipmentApi\EquipmentApi.csproj", "{DE8C9EB9-0A00-453A-BB77-B88C209C305A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DE8C9EB9-0A00-453A-BB77-B88C209C305A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE8C9EB9-0A00-453A-BB77-B88C209C305A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE8C9EB9-0A00-453A-BB77-B88C209C305A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE8C9EB9-0A00-453A-BB77-B88C209C305A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E88B3E44-79CB-4113-89CE-9ADEF2C526D9}
+	EndGlobalSection
+EndGlobal

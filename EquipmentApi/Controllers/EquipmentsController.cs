@@ -1,0 +1,168 @@
+﻿using EquipmentApi.Data;
+using EquipmentApi.DTOs;
+using EquipmentApi.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace EquipmentApi.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    [Authorize]
+    public class EquipmentsController : ControllerBase
+    {
+        private readonly AppDbContext _context;
+        public EquipmentsController(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAll()
+        {
+            var equipments = await _context.Equipments.ToListAsync();
+
+            return Ok(equipments);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var equipment = await _context.Equipments.FindAsync(id);
+            if (equipment == null) return NotFound("Equipment not found.");
+
+            return Ok(equipment);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Create([FromForm] CreateEquipmentDto request) // <--- 1. ต้องใส่ [FromForm] ตรงนี้ครับสำคัญมาก
+        {
+
+            if (string.IsNullOrEmpty(request.Code) || string.IsNullOrEmpty(request.Name))
+            {
+                return BadRequest("Code and Name are required.");
+            }
+
+
+            if (await _context.Equipments.AnyAsync(e => e.Code == request.Code))
+            {
+                return BadRequest($"Equipment Code '{request.Code}' already exists.");
+            }
+
+            string imageUrl = "";
+
+            if (request.ImageFile != null)
+            {
+
+                string fileName = Guid.NewGuid().ToString() + Path.GetExtension(request.ImageFile.FileName);
+                string uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
+                if (!Directory.Exists(uploadFolder)) Directory.CreateDirectory(uploadFolder);
+                string filePath = Path.Combine(uploadFolder, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await request.ImageFile.CopyToAsync(stream);
+                }
+                imageUrl = $"/images/{fileName}";
+            }
+
+
+            var newEquipment = new Equipment
+            {
+                Code = request.Code,
+                Name = request.Name,
+                Description = request.Description,
+                CategoryId = request.CategoryId,
+                ImageUrl = imageUrl,
+                Status = 1
+            };
+
+            _context.Equipments.Add(newEquipment);
+
+
+            var result = await _context.SaveChangesAsync();
+
+            if (result > 0)
+            {
+
+                return Ok(new
+                {
+                    message = "Equipment created successfully!",
+                    data = newEquipment,
+                    timestamp = DateTime.Now
+                });
+            }
+            else
+            {
+                return StatusCode(500, "Database save failed.");
+            }
+        }
+
+
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Put(Guid id, CreateEquipmentDto request)
+        {
+            var equipment = await _context.Equipments.FindAsync(id);
+            if (equipment == null) return NotFound("Equipment not found.");
+
+            equipment.Code = request.Code;
+            equipment.Name = request.Name;
+            equipment.Description = request.Description;
+            equipment.CategoryId = request.CategoryId;
+
+            if (request.ImageFile != null)
+            {
+
+                if (!string.IsNullOrEmpty(equipment.ImageUrl))
+                {
+
+                    string oldFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", equipment.ImageUrl.TrimStart('/'));
+
+
+                    if (System.IO.File.Exists(oldFilePath))
+                    {
+                        System.IO.File.Delete(oldFilePath);
+                    }
+                }
+
+                string fileName = Guid.NewGuid().ToString() + Path.GetExtension(request.ImageFile.FileName);
+                string uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
+
+                if (!Directory.Exists(uploadFolder)) Directory.CreateDirectory(uploadFolder);
+                string filePath = Path.Combine(uploadFolder, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await request.ImageFile.CopyToAsync(stream);
+                }
+
+                equipment.ImageUrl = $"/images/{fileName}";
+            }
+
+
+            await _context.SaveChangesAsync();
+
+            return Ok(equipment);
+
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var equipment = await _context.Equipments.FindAsync(id);
+            if (equipment == null) return BadRequest();
+
+
+            _context.Equipments.Remove(equipment);
+            await _context.SaveChangesAsync();
+            return Ok("Equipment deleted.");
+        }
+
+
+    }
+}
