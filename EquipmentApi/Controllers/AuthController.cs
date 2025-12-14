@@ -73,7 +73,12 @@ namespace EquipmentApi.Controllers
             // 4. สร้าง Token (เหมือนเดิม)
             string token = CreateToken(user);
 
-            return Ok(new { Token = token, Role = user.Role });
+            return Ok(new
+            {
+                Token = token,
+                Role = user.Role,
+                FullName = user.FullName
+            });
         }
 
         private string CreateToken(User user)
