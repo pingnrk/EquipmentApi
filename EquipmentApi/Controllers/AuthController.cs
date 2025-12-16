@@ -11,7 +11,7 @@ using System.Text;
 namespace EquipmentApi.Controllers
 {
     [Route("api/[controller]")]
-    [ApiController]
+    [ApiController] // ตัวนี้จะ Auto-Validate ตาม Data Annotations ใน DTO ให้เอง ถ้าไม่ผ่านมันจะ Return 400 ทันที
     public class AuthController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -26,20 +26,30 @@ namespace EquipmentApi.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto request)
         {
+            // Clean input
             var cleanEmpId = request.EmployeeId.Trim().ToLower();
+            var cleanEmail = request.Email.Trim().ToLower();
 
+            // 1. Validate: เช็คว่า EmployeeId ซ้ำไหม
             if (await _context.Users.AnyAsync(u => u.EmployeeId == cleanEmpId))
             {
-                return BadRequest("Employee ID already exists.");
+                return BadRequest(new { message = "รหัสพนักงานนี้ถูกใช้งานแล้ว" });
             }
 
+            // 2. Validate: เช็คว่า Email ซ้ำไหม (ควรเช็คด้วย)
+            if (await _context.Users.AnyAsync(u => u.Email == cleanEmail))
+            {
+                return BadRequest(new { message = "อีเมลนี้ถูกใช้งานแล้ว" });
+            }
+
+            // Hash password
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
             var user = new User
             {
                 EmployeeId = cleanEmpId,
-                FullName = request.FullName,
-                Email = request.Email,
+                FullName = request.FullName.Trim(),
+                Email = cleanEmail,
                 PasswordHash = passwordHash,
                 Role = "Member"
             };
@@ -47,30 +57,30 @@ namespace EquipmentApi.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "User registered successfully!" });
+            return Ok(new { message = "ลงทะเบียนสำเร็จ!" });
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto request)
         {
-            // 1. จัด Format Input ให้เป็นตัวเล็กเหมือนใน DB
             var cleanEmpId = request.EmployeeId.Trim().ToLower();
 
-            // 2. หา User จาก EmployeeId แทน Email
             var user = await _context.Users.FirstOrDefaultAsync(u => u.EmployeeId == cleanEmpId);
 
+            // Security Improvement: 
+            // ไม่ควรบอกชัดเจนว่า "ไม่พบ User" หรือ "รหัสผิด" แยกกัน
+            // เพื่อป้องกัน Hacker เดาสุ่ม User (User Enumeration Attack)
+            // ให้ตอบรวมๆ ว่า "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"
             if (user == null)
             {
-                return BadRequest("User not found.");
+                return Unauthorized(new { message = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
             }
 
-            // 3. เช็ค Password (เหมือนเดิม)
             if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
-                return BadRequest("Wrong password.");
+                return Unauthorized(new { message = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
             }
 
-            // 4. สร้าง Token (เหมือนเดิม)
             string token = CreateToken(user);
 
             return Ok(new
@@ -84,11 +94,11 @@ namespace EquipmentApi.Controllers
         private string CreateToken(User user)
         {
             List<Claim> claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.FullName),
-            new Claim(ClaimTypes.Role, user.Role) // ใส่ Role เข้าไปใน Token เลย
-        };
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.FullName),
+                new Claim(ClaimTypes.Role, user.Role)
+            };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
                 _configuration.GetSection("JwtSettings:Key").Value!));
@@ -97,7 +107,7 @@ namespace EquipmentApi.Controllers
 
             var token = new JwtSecurityToken(
                 claims: claims,
-                expires: DateTime.Now.AddDays(1), // Token หมดอายุใน 1 วัน
+                expires: DateTime.Now.AddDays(1),
                 signingCredentials: creds
             );
 
