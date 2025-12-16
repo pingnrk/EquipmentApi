@@ -14,6 +14,8 @@ namespace EquipmentApi.Data
         public DbSet<BorrowRequest> BorrowRequests { get; set; }
         public DbSet<BorrowRequestItem> BorrowRequestItems { get; set; }
 
+        public DbSet<Category> Categories { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
