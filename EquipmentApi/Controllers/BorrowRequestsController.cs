@@ -85,6 +85,23 @@ namespace EquipmentApi.Controllers
             return Ok(new { message = "Request submitted", requestId = borrowRequest.Id });
         }
 
+        [HttpGet("my-requests")]
+        public async Task<IActionResult> GetMyRequests()
+        {
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+            var userId = Guid.Parse(userIdString);
+
+            var requests = await _context.BorrowRequests
+                .Include(r => r.Items)
+                    .ThenInclude(i => i.Equipment)
+                .Where(r => r.UserId == userId)
+                .OrderByDescending(r => r.RequestDate)
+                .ToListAsync();
+
+            return Ok(requests);
+        }
+
         [HttpGet]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllRequests()
