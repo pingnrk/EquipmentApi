@@ -39,56 +39,56 @@ namespace EquipmentApi.Controllers
 
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Create([FromForm] CreateEquipmentDto request) // <--- 1. ต้องใส่ [FromForm] ตรงนี้ครับสำคัญมาก
+        public async Task<IActionResult> Create([FromForm] CreateEquipmentDto request)
         {
-
+            // 1. Validation (เหมือนเดิม)
             if (string.IsNullOrEmpty(request.Code) || string.IsNullOrEmpty(request.Name))
             {
                 return BadRequest("Code and Name are required.");
             }
-
 
             if (await _context.Equipments.AnyAsync(e => e.Code == request.Code))
             {
                 return BadRequest($"Equipment Code '{request.Code}' already exists.");
             }
 
+            // 2. แปลงไฟล์รูปเป็น Base64 (ส่วนที่แก้) 🛠️
             string imageUrl = "";
 
-            if (request.ImageFile != null)
+            if (request.ImageFile != null && request.ImageFile.Length > 0)
             {
-
-                string fileName = Guid.NewGuid().ToString() + Path.GetExtension(request.ImageFile.FileName);
-                string uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
-                if (!Directory.Exists(uploadFolder)) Directory.CreateDirectory(uploadFolder);
-                string filePath = Path.Combine(uploadFolder, fileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
+                // ใช้ MemoryStream เพื่ออ่านไฟล์เป็น byte[] โดยไม่ต้องเซฟลง Disk
+                using (var ms = new MemoryStream())
                 {
-                    await request.ImageFile.CopyToAsync(stream);
+                    await request.ImageFile.CopyToAsync(ms);
+                    var fileBytes = ms.ToArray();
+
+                    // แปลงเป็น Base64 String
+                    string base64String = Convert.ToBase64String(fileBytes);
+
+                    // จัด Format ให้ Browser อ่านได้เลย (data:image/png;base64,....)
+                    imageUrl = $"data:{request.ImageFile.ContentType};base64,{base64String}";
                 }
-                imageUrl = $"/images/{fileName}";
             }
 
-
+            // 3. สร้าง Object ลง DB
             var newEquipment = new Equipment
             {
                 Code = request.Code,
                 Name = request.Name,
                 Description = request.Description,
                 CategoryId = request.CategoryId,
-                ImageUrl = imageUrl,
+                ImageUrl = imageUrl, // เก็บสตริงยาวๆ ลง DB ไปเลย
+                Stock = request.Stock, // อย่าลืม mapping field อื่นๆ ให้ครบ
+                IsUnlimited = request.IsUnlimited,
                 Status = 1
             };
 
             _context.Equipments.Add(newEquipment);
-
-
             var result = await _context.SaveChangesAsync();
 
             if (result > 0)
             {
-
                 return Ok(new
                 {
                     message = "Equipment created successfully!",
