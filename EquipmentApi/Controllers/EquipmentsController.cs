@@ -27,8 +27,9 @@ namespace EquipmentApi.Controllers
             return Ok(equipments);
         }
 
+        [AllowAnonymous]
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<IActionResult> GetById(Guid id)
         {
             var equipment = await _context.Equipments.FindAsync(id);
             if (equipment == null) return NotFound("Equipment not found.");
