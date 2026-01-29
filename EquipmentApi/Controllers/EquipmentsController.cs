@@ -41,7 +41,7 @@ namespace EquipmentApi.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromForm] CreateEquipmentDto request)
         {
-            // 1. Validation (เหมือนเดิม)
+
             if (string.IsNullOrEmpty(request.Code) || string.IsNullOrEmpty(request.Name))
             {
                 return BadRequest("Code and Name are required.");
@@ -52,34 +52,29 @@ namespace EquipmentApi.Controllers
                 return BadRequest($"Equipment Code '{request.Code}' already exists.");
             }
 
-            // 2. แปลงไฟล์รูปเป็น Base64 (ส่วนที่แก้) 🛠️
             string imageUrl = "";
 
             if (request.ImageFile != null && request.ImageFile.Length > 0)
             {
-                // ใช้ MemoryStream เพื่ออ่านไฟล์เป็น byte[] โดยไม่ต้องเซฟลง Disk
                 using (var ms = new MemoryStream())
                 {
                     await request.ImageFile.CopyToAsync(ms);
                     var fileBytes = ms.ToArray();
 
-                    // แปลงเป็น Base64 String
                     string base64String = Convert.ToBase64String(fileBytes);
 
-                    // จัด Format ให้ Browser อ่านได้เลย (data:image/png;base64,....)
                     imageUrl = $"data:{request.ImageFile.ContentType};base64,{base64String}";
                 }
             }
 
-            // 3. สร้าง Object ลง DB
             var newEquipment = new Equipment
             {
                 Code = request.Code,
                 Name = request.Name,
                 Description = request.Description,
                 CategoryId = request.CategoryId,
-                ImageUrl = imageUrl, // เก็บสตริงยาวๆ ลง DB ไปเลย
-                Stock = request.Stock, // อย่าลืม mapping field อื่นๆ ให้ครบ
+                ImageUrl = imageUrl, 
+                Stock = request.Stock, 
                 IsUnlimited = request.IsUnlimited,
                 Status = 1
             };
@@ -114,15 +109,14 @@ namespace EquipmentApi.Controllers
             equipment.Name = request.Name;
             equipment.Description = request.Description;
             equipment.CategoryId = request.CategoryId;
+            equipment.Stock = request.Stock;        
+            equipment.IsUnlimited = request.IsUnlimited;
 
             if (request.ImageFile != null)
             {
-
                 if (!string.IsNullOrEmpty(equipment.ImageUrl))
                 {
-
                     string oldFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", equipment.ImageUrl.TrimStart('/'));
-
 
                     if (System.IO.File.Exists(oldFilePath))
                     {
@@ -143,12 +137,8 @@ namespace EquipmentApi.Controllers
 
                 equipment.ImageUrl = $"/images/{fileName}";
             }
-
-
             await _context.SaveChangesAsync();
-
             return Ok(equipment);
-
         }
 
         [HttpDelete("{id}")]
@@ -158,10 +148,10 @@ namespace EquipmentApi.Controllers
             var equipment = await _context.Equipments.FindAsync(id);
             if (equipment == null) return BadRequest();
 
+            equipment.IsDeleted = true;
 
-            _context.Equipments.Remove(equipment);
             await _context.SaveChangesAsync();
-            return Ok("Equipment deleted.");
+            return Ok(new { message = "Equipment deleted." });
         }
 
 

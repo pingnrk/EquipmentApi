@@ -16,7 +16,6 @@ namespace EquipmentApi.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
-
         public AuthController(AppDbContext context, IConfiguration configuration)
         {
             _context = context;
@@ -26,23 +25,19 @@ namespace EquipmentApi.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto request)
         {
-            // Clean input
             var cleanEmpId = request.EmployeeId.Trim().ToLower();
             var cleanEmail = request.Email.Trim().ToLower();
 
-            // 1. Validate: เช็คว่า EmployeeId ซ้ำไหม
             if (await _context.Users.AnyAsync(u => u.EmployeeId == cleanEmpId))
             {
                 return BadRequest(new { message = "รหัสพนักงานนี้ถูกใช้งานแล้ว" });
             }
 
-            // 2. Validate: เช็คว่า Email ซ้ำไหม (ควรเช็คด้วย)
             if (await _context.Users.AnyAsync(u => u.Email == cleanEmail))
             {
                 return BadRequest(new { message = "อีเมลนี้ถูกใช้งานแล้ว" });
             }
 
-            // Hash password
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
             var user = new User
@@ -51,12 +46,12 @@ namespace EquipmentApi.Controllers
                 FullName = request.FullName.Trim(),
                 Email = cleanEmail,
                 PasswordHash = passwordHash,
-                Role = "Member"
+                Role = "Member",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
             };
-
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
-
             return Ok(new { message = "ลงทะเบียนสำเร็จ!" });
         }
 
@@ -64,18 +59,12 @@ namespace EquipmentApi.Controllers
         public async Task<IActionResult> Login(LoginDto request)
         {
             var cleanEmpId = request.EmployeeId.Trim().ToLower();
-
             var user = await _context.Users.FirstOrDefaultAsync(u => u.EmployeeId == cleanEmpId);
 
-            // Security Improvement: 
-            // ไม่ควรบอกชัดเจนว่า "ไม่พบ User" หรือ "รหัสผิด" แยกกัน
-            // เพื่อป้องกัน Hacker เดาสุ่ม User (User Enumeration Attack)
-            // ให้ตอบรวมๆ ว่า "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"
             if (user == null)
             {
                 return Unauthorized(new { message = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
             }
-
             if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
                 return Unauthorized(new { message = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
