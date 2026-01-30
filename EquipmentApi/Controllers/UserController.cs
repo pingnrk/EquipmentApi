@@ -67,6 +67,12 @@ namespace EquipmentApi.Controllers
             if (request.Email != null) user.Email = request.Email;
             if (request.Role != null) user.Role = request.Role;
 
+
+            if (!string.IsNullOrEmpty(request.Password))
+            {
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            }
+
             await _context.SaveChangesAsync();
             return Ok(user);
         }
