@@ -1,13 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using EquipmentApi.Data;
 using EquipmentApi.Dtos;
+using EquipmentApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using EquipmentApi.Models;
 
 namespace EquipmentApi.Controllers
 {
@@ -61,7 +57,7 @@ namespace EquipmentApi.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUser(int id, UpdateUserDto request)
+        public async Task<IActionResult> UpdateUser(Guid id, UpdateUserDto request)
         {
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound(new { message = "ไม่พบผู้ใช้งานนี้" });
@@ -76,14 +72,14 @@ namespace EquipmentApi.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> Delete(Guid id)
         {
             var user = await _context.Users.FindAsync(id);
             if (user == null) return BadRequest(new { message = "ไม่พบผู้ใช้งานนี้" });
 
             user.IsActive = false;
             await _context.SaveChangesAsync();
-            return Ok(new { message = "แก้ไขข้อมูลสำเร็จ"});
+            return Ok(new { message = "แก้ไขข้อมูลสำเร็จ" });
         }
 
 

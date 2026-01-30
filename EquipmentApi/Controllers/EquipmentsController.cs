@@ -22,7 +22,9 @@ namespace EquipmentApi.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetAll()
         {
-            var equipments = await _context.Equipments.ToListAsync();
+            var equipments = await _context.Equipments.Where(i => i.IsDeleted == false)
+                .OrderBy(i => i.CreatedAt)
+                .ToListAsync();
 
             return Ok(equipments);
         }
@@ -73,8 +75,8 @@ namespace EquipmentApi.Controllers
                 Name = request.Name,
                 Description = request.Description,
                 CategoryId = request.CategoryId,
-                ImageUrl = imageUrl, 
-                Stock = request.Stock, 
+                ImageUrl = imageUrl,
+                Stock = request.Stock,
                 IsUnlimited = request.IsUnlimited,
                 Status = 1
             };
@@ -109,7 +111,7 @@ namespace EquipmentApi.Controllers
             equipment.Name = request.Name;
             equipment.Description = request.Description;
             equipment.CategoryId = request.CategoryId;
-            equipment.Stock = request.Stock;        
+            equipment.Stock = request.Stock;
             equipment.IsUnlimited = request.IsUnlimited;
 
             if (request.ImageFile != null)
